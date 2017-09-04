@@ -27,13 +27,10 @@
 <script type="text/javascript">
     RED.nodes.registerType('futurehome-credentials',{
         category: 'config',
-        color: '#a6bbcf',
         defaults: {
             base_uri: {value: "https://futurehome.no/v1"},
             username: {value: ""}
         },
-        inputs:1,
-        outputs:1,
         label: function() {
             return this.username;
         },
@@ -60,7 +57,6 @@
 
             function pollFuturehomeCredentials(e) {
                 $.getJSON('credentials/futurehome-credentials/'+nodeId,function(data) {
-                    console.log(data);
                     if (data.username) {
                         updateFuturehomeUsername(data.username);
                         delete window.futurehomeConfigNodeIntervalId;
@@ -116,57 +112,77 @@
     });
 </script>
 
-<script type="text/x-red" data-template-name="futurehome-site">
+<script type="text/x-red" data-template-name="site in">
     <div class="form-row">
         <label for="node-input-user"><i class="fa fa-user"></i> <span>User</span></label>
         <input type="text" id="node-input-user">
     </div>
-    <div class="form-row">
+    <div class="form-row" id="form-row-input-site">
         <label for="node-input-site"><i class="fa"></i> <span>Site</span></label>
-        <input type="text" id="node-input-site">
+        <select id="node-input-site">
+        </select>
     </div>
 </script>
 
-<script type="text/x-red" data-help-name="futurehome-site">
+<script type="text/x-red" data-help-name="site in">
     <p>Listener for futurehome site</p>
 </script>
 
 <script type="text/javascript">
-    RED.nodes.registerType('futurehome-site',{
+    RED.nodes.registerType('site in',{
         category: 'futurehome-input',
         color: '#a6bbcf',
         defaults: {
             user: {type:"futurehome-credentials",required:true},
-            site: {value:""}
+            site: {value:"", required:true}
         },
-        inputs:1,
+        inputs:0,
         outputs:1,
         label: function() {
             return "Site"||this.site;
         },
         icon: "logo.png",
         oneditprepare: function() {
-            var nodeId = this.id;
+            var node = this;
 
-            function updateFuturehomeSitelists(list) {
+            function updateSites() {
+                var user = node.user;
 
-            }
-
-            function pollAuthenticated() {
-                $.getJSON('credentials/futurehome-site/'+nodeId,function(data) {
-                    console.log(data);
-                    if (data.site_name) {
-                        updateFuturehomeSitename(data.site_name);
-                        delete window.futurehomeSiteNodeIntervalId;
-                    } else {
-                        window.futurehomeSiteNodeIntervalId = window.setTimeout(pollAuthenticated,2000);
+                $.getJSON('/futurehome/sites/'+user,function(data) {
+                    for (var key in data) {
+                        if (node.site == data[key].siteId) {
+                            $('#node-input-site').append(
+                                $("<option></option>")
+                                .val(data[key].siteId)
+                                .text(data[key].name + " [" + data[key].owner.name + "]")
+                                .prop('selected',true)
+                            );
+                        } else {
+                            $('#node-input-site').append(
+                                $("<option></option>")
+                                .val(data[key].siteId)
+                                .text(data[key].name + " [" + data[key].owner.name + "]")
+                            );
+                        }
                     }
                 });
             }
-        },
-        credentials: {
-            site_name: {type: "text"},
-            site_id: {type: "password"}
+
+            function isCredentialLoaded() {
+                if (node.user) {
+                    $("#form-row-input-site").show();
+                    updateSites();
+                } else {
+                    window.futurehomeSitesNodeIntervalId = window.setTimeout(isCredentialLoaded, 2000);
+                }
+            }
+
+            if (!node.user) {
+                window.futurehomeSitesNodeIntervalId = window.setTimeout(isCredentialLoaded, 2000);
+                $("#form-row-input-site").hide();
+            } else {
+                updateSites();
+            }
         }
     });
 </script>

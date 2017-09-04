@@ -1,0 +1,20 @@
+{
+    "name" : "node-red-contrib-futurehome",
+    "author": {
+        "name": "Arun Poudel",
+        "email": "fr3ak@fr3ak.me",
+        "url": "http://fr3ak.me"
+    },
+    "dependencies": {
+        "oauth": "~0.9.15",
+        "request": "~2.74.0"
+    },
+    "keywords": [ "futurehome" ],
+    "version": "0.0.1",
+    "description": "A sample node for node-red",
+    "node-red": {
+        "nodes": {
+            "futurehome": "futurehome/futurehome.js"
+        }
+    }
+}

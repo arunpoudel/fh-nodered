@@ -1,0 +1,172 @@
+<script type="text/x-red" data-template-name="futurehome-credentials">
+    <div class="form-row" id="node-config-futurehome-app-keys">
+        <div class="form-row">
+            <label style="margin-left: 10px; margin-right: -10px;" for="node-config-input-base_uri"><i class="fa"></i> <span>Base URL</span></label>
+            <input type="text" id="node-config-input-base_uri">
+        </div>
+        <div class="form-row">
+            <label style="margin-left: 10px; margin-right: -10px;" for="node-config-input-client_id"><i class="fa fa-key"></i> <span>Client Id</span></label>
+            <input type="password" id="node-config-input-client_id">
+        </div>
+        <div class="form-row">
+            <label style="margin-left: 10px; margin-right: -10px;" for="node-config-input-client_secret"><i class="fa fa-key"></i> <span>Client Secret</span></label>
+            <input type="password" id="node-config-input-client_secret">
+        </div>
+        <div class="form-row">
+            <label>&nbsp;</label>
+            <a class="btn" id="node-config-start-auth" href="#" target="_blank"><span>Login with FutureHome</span></a>
+        </div>
+    </div>
+    <div id="node-config-futurehome-user">
+        <div class="form-row">
+            <label><i class="fa fa-user"></i> <span>Username</span></label><span id="node-config-futurehome-username" class="input-xlarge uneditable-input"></span>
+        </div>
+        <input type="hidden" id="node-config-input-username">
+    </div>
+</script>
+<script type="text/javascript">
+    RED.nodes.registerType('futurehome-credentials',{
+        category: 'config',
+        color: '#a6bbcf',
+        defaults: {
+            base_uri: {value: "https://futurehome.no/v1"},
+            username: {value: ""}
+        },
+        inputs:1,
+        outputs:1,
+        label: function() {
+            return this.username;
+        },
+        exportable: false,
+        credentials: {
+            username: {type: "text"},
+            base_uri: {type: "password"},
+            client_id: {type:"password"},
+            client_secret: {type: "password"},
+            access_token: {type:"password"},
+            refresh_token: {type:"password"},
+            sites: {type: "array"}
+        },
+        icon: "logo.png",
+        oneditprepare: function() {
+            var nodeId = this.id;
+
+            function updateFuturehomeUsername(name) {
+                $("#node-config-futurehome-app-keys").hide();
+                $("#node-config-futurehome-username").html(name);
+                $("#node-config-input-username").val(name);
+                $("#node-config-futurehome-user").show();
+            }
+
+            function pollFuturehomeCredentials(e) {
+                $.getJSON('credentials/futurehome-credentials/'+nodeId,function(data) {
+                    console.log(data);
+                    if (data.username) {
+                        updateFuturehomeUsername(data.username);
+                        delete window.futurehomeConfigNodeIntervalId;
+                    } else {
+                        window.futurehomeConfigNodeIntervalId = window.setTimeout(pollFuturehomeCredentials,2000);
+                    }
+                });
+            }
+
+            $("#node-config-start-auth").mousedown(function(e) {
+                var client_id = $("#node-config-input-client_id").val();
+                var client_secret = $("#node-config-input-client_secret").val();
+                var base_uri = $("#node-config-input-base_uri").val();
+                var pathname = document.location.pathname;
+                if (pathname.slice(-1) != "/") {
+                    pathname += "/";
+                }
+                var callback = encodeURIComponent(location.protocol+"//"+location.hostname+
+                    (location.port?":"+location.port:"")+
+                    pathname+"futurehome/authorize/callback");
+                var url = 'futurehome/authorize?id='+nodeId+'&callback='+callback+'&clientid='+client_id+"&clientsecret="+client_secret+"&baseuri="+base_uri;
+                $(this).attr("href", url);
+                window.futurehomeConfigNodeIntervalId = window.setTimeout(pollFuturehomeCredentials, 2000);
+            });
+
+            $("#node-config-start-auth").click(function(e) {
+                var key = $("#node-config-input-client_id").val();
+                var secret = $("#node-config-input-client_secret").val();
+                if (key === "" || secret === "") {
+                    e.preventDefault();
+                }
+            });
+
+            if (this.username) {
+                updateFuturehomeUsername(this.username);
+            } else {
+                $("#node-config-futurehome-app-keys").show();
+                $("#node-config-futurehome-user").hide();
+            }
+        },
+        oneditsave: function() {
+            if (window.futurehomeConfigNodeIntervalId) {
+               window.clearTimeout(window.futurehomeConfigNodeIntervalId);
+               delete window.futurehomeConfigNodeIntervalId;
+           }
+        },
+        oneditcancel: function(adding) {
+            if (window.futurehomeConfigNodeIntervalId) {
+               window.clearTimeout(window.futurehomeConfigNodeIntervalId);
+               delete window.futurehomeConfigNodeIntervalId;
+           }
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="futurehome-site">
+    <div class="form-row">
+        <label for="node-input-user"><i class="fa fa-user"></i> <span>User</span></label>
+        <input type="text" id="node-input-user">
+    </div>
+    <div class="form-row">
+        <label for="node-input-site"><i class="fa"></i> <span>Site</span></label>
+        <input type="text" id="node-input-site">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="futurehome-site">
+    <p>Listener for futurehome site</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('futurehome-site',{
+        category: 'futurehome-input',
+        color: '#a6bbcf',
+        defaults: {
+            user: {type:"futurehome-credentials",required:true},
+            site: {value:""}
+        },
+        inputs:1,
+        outputs:1,
+        label: function() {
+            return "Site"||this.site;
+        },
+        icon: "logo.png",
+        oneditprepare: function() {
+            var nodeId = this.id;
+
+            function updateFuturehomeSitelists(list) {
+
+            }
+
+            function pollAuthenticated() {
+                $.getJSON('credentials/futurehome-site/'+nodeId,function(data) {
+                    console.log(data);
+                    if (data.site_name) {
+                        updateFuturehomeSitename(data.site_name);
+                        delete window.futurehomeSiteNodeIntervalId;
+                    } else {
+                        window.futurehomeSiteNodeIntervalId = window.setTimeout(pollAuthenticated,2000);
+                    }
+                });
+            }
+        },
+        credentials: {
+            site_name: {type: "text"},
+            site_id: {type: "password"}
+        }
+    });
+</script>
